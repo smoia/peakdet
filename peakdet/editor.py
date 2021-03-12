@@ -14,7 +14,6 @@ plt.rcParams['toolbar'] = 'toolmanager'
 
 class DeletePeaks(ToolToggleBase):
     """Delete some peaks."""
-
     # keyboard shortcut
     description = 'Delete Peaks'
     # image = 'zoom_to_rect'
@@ -22,20 +21,65 @@ class DeletePeaks(ToolToggleBase):
     default_keymap = 'y'
     default_toggled = False
 
+    def __init__(self, *args):
+        super().__init__(*args)
+        self._button_pressed = None
+        self._xypress = None
+        self._idPress = None
+        self._idRelease = None
+
     def enable(self, *args):
-        method, fcolor = 'delete', 'red'
-        print(f'{method} {fcolor}')
-        action = functools.partial(self.figure.on_edit, method=method)
-        self.span = SpanSelector(self.ax, action, 'horizontal',
-                                 button=1, useblit=True,
-                                 rectprops=dict(facecolor=fcolor, alpha=0.3))
+        self.figure.canvas.widgetlock(self)
+        self._idPress = self.figure.canvas.mpl_connect(
+            'button_press_event', self._press)
+        self._idRelease = self.figure.canvas.mpl_connect(
+            'button_release_event', self._release)
 
     def disable(self, *args):
-        method, fcolor = 'none', 'black'
-        print(f'{method} {fcolor}')
+        self.figure.canvas.widgetlock.release(self)
+        self.figure.canvas.mpl_disconnect(self._idPress)
+        self.figure.canvas.mpl_disconnect(self._idRelease)
+
+    def trigger(self, sender, event, data=None):
+        self.toolmanager.get_tool('editing').add_figure(self.figure)
+        super().trigger(sender, event, data)
+
+    def _press(self, event):
+        """Callback for mouse button presses in zoom-to-rectangle mode."""
+
+        # If we're already in the middle of a zoom, pressing another
+        # button works to "cancel"
+        if event.button == 1:
+            self._button_pressed = 1
+        else:
+            return
+
+        x, y = event.x, event.y
+
+        self._xypress = []
+        for i, a in enumerate(self.figure.get_axes()):
+            if (x is not None and y is not None and a.in_axes(event)):
+                self._xypress.append((x, y))
+
+    # def _mouse_move(self, event):
+    #     """Callback for mouse moves in zoom-to-rectangle mode."""
+
+    #     self.figure.span = SpanSelector(self.figure.ax, None, 'horizontal',
+    #                                     button=1, useblit=True,
+    #                                     rectprops=dict(facecolor='red', alpha=0.3))
+
+    def _release(self, event):
+        """Callback for mouse button releases in zoom-to-rectangle mode."""
+
+        x2, y2 = event.x, event.y
+        x1, y1 = self._xypress
+        self.figure.on_edit(x1, x2, 'delete')
+
 
     # def trigger(self, *args, **kwargs):
     #     global method, fcolor
+        # method, fcolor = 'delete', 'red'
+        # print(f'{method} {fcolor}')
 
 
 class _PhysioEditor():
@@ -50,7 +94,7 @@ class _PhysioEditor():
 
     def __init__(self, data):
         # Initialise the global method and color to modify them.
-        # global method, fcolor
+        global method, fcolor
         method, fcolor = 'none', 'black'
 
         # save reference to data and generate "time" for interpretable X-axis
