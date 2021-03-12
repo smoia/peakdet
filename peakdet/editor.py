@@ -13,36 +13,18 @@ plt.rcParams['toolbar'] = 'toolmanager'
 
 
 class DeletePeaks(ToolBase):
-    """
-    List all the tools controlled by the `ToolManager`.
-
-    Notes
-    -----
-    This button is taken from the matplotlib documentation.
-    """
+    """Delete some peaks."""
 
     # keyboard shortcut
-    default_keymap = 'm'
-    description = 'List Tools'
+    description = 'Delete Peaks'
+    # image = 'zoom_to_rect'
+    # radio_group = 'default'
+    default_keymap = 'y'
 
     def trigger(self, *args, **kwargs):
-        print('_' * 80)
-        print("{0:12} {1:45} {2}".format(
-            'Name (id)', 'Tool description', 'Keymap'))
-        print('-' * 80)
-        tools = self.toolmanager.tools
-        for name in sorted(tools):
-            if not tools[name].description:
-                continue
-            keys = ', '.join(sorted(self.toolmanager.get_tool_keymap(name)))
-            print("{0:12} {1:45} {2}".format(
-                name, tools[name].description, keys))
-        print('_' * 80)
-        print("Active Toggle tools")
-        print("{0:12} {1:45}".format("Group", "Active"))
-        print('-' * 80)
-        for group, active in self.toolmanager.active_toggle.items():
-            print("{0:12} {1:45}".format(str(group), str(active)))
+        global method, fcolor
+        method, fcolor = 'delete', 'red'
+        print(f'{method} {fcolor}')
 
 
 class ListTools(ToolBase):
@@ -89,6 +71,10 @@ class _PhysioEditor():
     """
 
     def __init__(self, data):
+        # Initialise the global method and color to modify them.
+        # global method, fcolor
+        method, fcolor = 'none', 'black'
+
         # save reference to data and generate "time" for interpretable X-axis
         self.data = utils.check_physio(data, copy=True)
         fs = 1 if data.fs is None else data.fs
@@ -103,20 +89,24 @@ class _PhysioEditor():
         self.fig.canvas.mpl_connect('scroll_event', self.on_wheel)
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
         self.fig.canvas.manager.toolmanager.add_tool('Delete Peaks', DeletePeaks)
-        self.fig.canvas.manager.toolmanager.add_tool('Reject Peaks', DeletePeaks)
-        self.fig.canvas.manager.toolmanager.add_tool('Add Peaks', DeletePeaks)
-        self.fig.canvas.manager.toolmanager.add_tool('List', ListTools)
+        # self.fig.canvas.manager.toolmanager.add_tool('Reject Peaks', DeletePeaks)
+        # self.fig.canvas.manager.toolmanager.add_tool('Add Peaks', DeletePeaks)
+        # self.fig.canvas.manager.toolmanager.add_tool('List', ListTools)
 
         # three selectors for:
         #    1. rejection (central mouse),
         #    2. addition (right mouse), and
         #    3. deletion (left mouse)
-        delete = functools.partial(self.on_edit, method='delete')
+        action = functools.partial(self.on_edit, method=method)
+        # delete = functools.partial(self.on_edit, method='delete')
         # reject = functools.partial(self.on_edit, method='reject')
         # insert = functools.partial(self.on_edit, method='insert')
-        self.span2 = SpanSelector(self.ax, delete, 'horizontal',
-                                  button=1, useblit=True,
-                                  rectprops=dict(facecolor='red', alpha=0.3))
+        self.span = SpanSelector(self.ax, action, 'horizontal',
+                                 button=1, useblit=True,
+                                 rectprops=dict(facecolor=fcolor, alpha=0.3))
+        # self.span2 = SpanSelector(self.ax, delete, 'horizontal',
+        #                           button=1, useblit=True,
+        #                           rectprops=dict(facecolor='red', alpha=0.3))
         # self.span1 = SpanSelector(self.ax, reject, 'horizontal',
         #                           button=2, useblit=True,
         #                           rectprops=dict(facecolor='blue', alpha=0.3))
@@ -172,7 +162,8 @@ class _PhysioEditor():
         method accepts 'insert', 'reject', 'delete'
         """
         if method not in ['insert', 'reject', 'delete']:
-            raise ValueError(f'Action "{method}" not supported.')
+            print(f'No method selected. Select one using the toolbar!')
+            return
 
         tmin, tmax = np.searchsorted(self.time, (xmin, xmax))
         pmin, pmax = np.searchsorted(self.data.peaks, (tmin, tmax))
