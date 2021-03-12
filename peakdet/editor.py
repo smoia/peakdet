@@ -5,59 +5,37 @@ import functools
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import SpanSelector
-from matplotlib.backend_tools import ToolBase
+from matplotlib.backend_tools import ToolToggleBase
 from peakdet import operations, utils
 
 
 plt.rcParams['toolbar'] = 'toolmanager'
 
 
-class DeletePeaks(ToolBase):
+class DeletePeaks(ToolToggleBase):
     """Delete some peaks."""
 
     # keyboard shortcut
     description = 'Delete Peaks'
     # image = 'zoom_to_rect'
-    # radio_group = 'default'
+    radio_group = 'peakedit'
     default_keymap = 'y'
+    default_toggled = False
 
-    def trigger(self, *args, **kwargs):
-        global method, fcolor
+    def enable(self, *args):
         method, fcolor = 'delete', 'red'
         print(f'{method} {fcolor}')
+        action = functools.partial(self.figure.on_edit, method=method)
+        self.span = SpanSelector(self.ax, action, 'horizontal',
+                                 button=1, useblit=True,
+                                 rectprops=dict(facecolor=fcolor, alpha=0.3))
 
+    def disable(self, *args):
+        method, fcolor = 'none', 'black'
+        print(f'{method} {fcolor}')
 
-class ListTools(ToolBase):
-    """
-    List all the tools controlled by the `ToolManager`.
-
-    Notes
-    -----
-    This button is taken from the matplotlib documentation.
-    """
-
-    # keyboard shortcut
-    default_keymap = 'm'
-    description = 'List Tools'
-
-    def trigger(self, *args, **kwargs):
-        print('_' * 80)
-        print("{0:12} {1:45} {2}".format(
-            'Name (id)', 'Tool description', 'Keymap'))
-        print('-' * 80)
-        tools = self.toolmanager.tools
-        for name in sorted(tools):
-            if not tools[name].description:
-                continue
-            keys = ', '.join(sorted(self.toolmanager.get_tool_keymap(name)))
-            print("{0:12} {1:45} {2}".format(
-                name, tools[name].description, keys))
-        print('_' * 80)
-        print("Active Toggle tools")
-        print("{0:12} {1:45}".format("Group", "Active"))
-        print('-' * 80)
-        for group, active in self.toolmanager.active_toggle.items():
-            print("{0:12} {1:45}".format(str(group), str(active)))
+    # def trigger(self, *args, **kwargs):
+    #     global method, fcolor
 
 
 class _PhysioEditor():
@@ -91,7 +69,7 @@ class _PhysioEditor():
         self.fig.canvas.manager.toolmanager.add_tool('Delete Peaks', DeletePeaks)
         # self.fig.canvas.manager.toolmanager.add_tool('Reject Peaks', DeletePeaks)
         # self.fig.canvas.manager.toolmanager.add_tool('Add Peaks', DeletePeaks)
-        # self.fig.canvas.manager.toolmanager.add_tool('List', ListTools)
+        self.fig.canvas.manager.toolbar.add_tool('Delete Peaks', 'peakedit')
 
         # three selectors for:
         #    1. rejection (central mouse),
