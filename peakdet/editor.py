@@ -4,7 +4,7 @@
 import functools
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import SpanSelector
+from matplotlib.widgets import SpanSelector, RadioButtons
 from peakdet import operations, utils
 
 
@@ -29,9 +29,16 @@ class _PhysioEditor():
         self.deleted, self.rejected, self.included = set(), set(), set()
 
         # make main plot objects
-        self.fig, self.ax = plt.subplots(nrows=1, ncols=1, tight_layout=True)
+        self.fig, self.ax = plt.subplots(nrows=1, ncols=1)
         self.fig.canvas.mpl_connect('scroll_event', self.on_wheel)
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
+
+        # Add radio buttons for editing purposes
+        plt.subplots_adjust(left=0.2)
+
+        ax_color = plt.axes([0.02, 0.5, 0.2, 0.3])
+        color_button = RadioButtons(ax_color, ['red', 'green', 'blue', 'black'],
+                                    [False, False, True, False], activecolor='k')
 
         # three selectors for:
         #    1. rejection (central mouse),
@@ -51,6 +58,12 @@ class _PhysioEditor():
                                   rectprops=dict(facecolor='green', alpha=0.3))
 
         self.plot_signals(False)
+
+        def color(labels):
+            self.set_color(labels)
+            self.fig.canvas.draw()
+
+        color_button.on_clicked(color)
 
     def plot_signals(self, plot=True):
         """Clear axes and plots data / peaks / troughs."""
