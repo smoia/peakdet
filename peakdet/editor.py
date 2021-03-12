@@ -4,82 +4,8 @@
 import functools
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import SpanSelector
-from matplotlib.backend_tools import ToolToggleBase
+from matplotlib.widgets import SpanSelector, RadioButtons
 from peakdet import operations, utils
-
-
-plt.rcParams['toolbar'] = 'toolmanager'
-
-
-class DeletePeaks(ToolToggleBase):
-    """Delete some peaks."""
-    # keyboard shortcut
-    description = 'Delete Peaks'
-    # image = 'zoom_to_rect'
-    radio_group = 'peakedit'
-    default_keymap = 'y'
-    default_toggled = False
-
-    def __init__(self, *args):
-        super().__init__(*args)
-        self._button_pressed = None
-        self._xypress = None
-        self._idPress = None
-        self._idRelease = None
-
-    def enable(self, *args):
-        self.figure.canvas.widgetlock(self)
-        self._idPress = self.figure.canvas.mpl_connect(
-            'button_press_event', self._press)
-        self._idRelease = self.figure.canvas.mpl_connect(
-            'button_release_event', self._release)
-
-    def disable(self, *args):
-        self.figure.canvas.widgetlock.release(self)
-        self.figure.canvas.mpl_disconnect(self._idPress)
-        self.figure.canvas.mpl_disconnect(self._idRelease)
-
-    def trigger(self, sender, event, data=None):
-        self.toolmanager.get_tool('editing').add_figure(self.figure)
-        super().trigger(sender, event, data)
-
-    def _press(self, event):
-        """Callback for mouse button presses in zoom-to-rectangle mode."""
-
-        # If we're already in the middle of a zoom, pressing another
-        # button works to "cancel"
-        if event.button == 1:
-            self._button_pressed = 1
-        else:
-            return
-
-        x, y = event.x, event.y
-
-        self._xypress = []
-        for i, a in enumerate(self.figure.get_axes()):
-            if (x is not None and y is not None and a.in_axes(event)):
-                self._xypress.append((x, y))
-
-    # def _mouse_move(self, event):
-    #     """Callback for mouse moves in zoom-to-rectangle mode."""
-
-    #     self.figure.span = SpanSelector(self.figure.ax, None, 'horizontal',
-    #                                     button=1, useblit=True,
-    #                                     rectprops=dict(facecolor='red', alpha=0.3))
-
-    def _release(self, event):
-        """Callback for mouse button releases in zoom-to-rectangle mode."""
-
-        x2, y2 = event.x, event.y
-        x1, y1 = self._xypress
-        self.figure.on_edit(x1, x2, 'delete')
-
-
-    # def trigger(self, *args, **kwargs):
-    #     global method, fcolor
-        # method, fcolor = 'delete', 'red'
-        # print(f'{method} {fcolor}')
 
 
 class _PhysioEditor():
@@ -93,10 +19,6 @@ class _PhysioEditor():
     """
 
     def __init__(self, data):
-        # Initialise the global method and color to modify them.
-        global method, fcolor
-        method, fcolor = 'none', 'black'
-
         # save reference to data and generate "time" for interpretable X-axis
         self.data = utils.check_physio(data, copy=True)
         fs = 1 if data.fs is None else data.fs
@@ -110,33 +32,38 @@ class _PhysioEditor():
         self.fig, self.ax = plt.subplots(nrows=1, ncols=1)
         self.fig.canvas.mpl_connect('scroll_event', self.on_wheel)
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
-        self.fig.canvas.manager.toolmanager.add_tool('Delete Peaks', DeletePeaks)
-        # self.fig.canvas.manager.toolmanager.add_tool('Reject Peaks', DeletePeaks)
-        # self.fig.canvas.manager.toolmanager.add_tool('Add Peaks', DeletePeaks)
-        self.fig.canvas.manager.toolbar.add_tool('Delete Peaks', 'peakedit')
+
+        # Add radio buttons for editing purposes
+        plt.subplots_adjust(left=0.2)
+
+        ax_color = plt.axes([0.02, 0.5, 0.2, 0.3])
+        color_button = RadioButtons(ax_color, ['red', 'green', 'blue', 'black'],
+                                    [False, False, True, False], activecolor='k')
 
         # three selectors for:
         #    1. rejection (central mouse),
         #    2. addition (right mouse), and
         #    3. deletion (left mouse)
-        action = functools.partial(self.on_edit, method=method)
-        # delete = functools.partial(self.on_edit, method='delete')
-        # reject = functools.partial(self.on_edit, method='reject')
-        # insert = functools.partial(self.on_edit, method='insert')
-        self.span = SpanSelector(self.ax, action, 'horizontal',
-                                 button=1, useblit=True,
-                                 rectprops=dict(facecolor=fcolor, alpha=0.3))
-        # self.span2 = SpanSelector(self.ax, delete, 'horizontal',
-        #                           button=1, useblit=True,
-        #                           rectprops=dict(facecolor='red', alpha=0.3))
-        # self.span1 = SpanSelector(self.ax, reject, 'horizontal',
-        #                           button=2, useblit=True,
-        #                           rectprops=dict(facecolor='blue', alpha=0.3))
-        # self.span3 = SpanSelector(self.ax, insert, 'horizontal',
-        #                           button=3, useblit=True,
-        #                           rectprops=dict(facecolor='green', alpha=0.3))
+        delete = functools.partial(self.on_edit, method='delete')
+        reject = functools.partial(self.on_edit, method='reject')
+        insert = functools.partial(self.on_edit, method='insert')
+        self.span2 = SpanSelector(self.ax, delete, 'horizontal',
+                                  button=1, useblit=True,
+                                  rectprops=dict(facecolor='red', alpha=0.3))
+        self.span1 = SpanSelector(self.ax, reject, 'horizontal',
+                                  button=2, useblit=True,
+                                  rectprops=dict(facecolor='blue', alpha=0.3))
+        self.span3 = SpanSelector(self.ax, insert, 'horizontal',
+                                  button=3, useblit=True,
+                                  rectprops=dict(facecolor='green', alpha=0.3))
 
         self.plot_signals(False)
+
+        def color(labels):
+            self.set_color(labels)
+            self.fig.canvas.draw()
+
+        color_button.on_clicked(color)
 
     def plot_signals(self, plot=True):
         """Clear axes and plots data / peaks / troughs."""
