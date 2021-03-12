@@ -224,6 +224,8 @@ def edit_physio(data):
 
     # no point in manual edits if peaks/troughs aren't defined
     if not (len(data.peaks) and len(data.troughs)):
+        print('Peakdet did not find any peak or troughs in the data. '
+              'Please run peakfind_physio() first.')
         return
 
     # perform manual editing
