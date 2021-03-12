@@ -4,8 +4,78 @@
 import functools
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.widgets import SpanSelector, RadioButtons
+from matplotlib.widgets import SpanSelector
+from matplotlib.backend_tools import ToolBase
 from peakdet import operations, utils
+
+
+plt.rcParams['toolbar'] = 'toolmanager'
+
+
+class DeletePeaks(ToolBase):
+    """
+    List all the tools controlled by the `ToolManager`.
+
+    Notes
+    -----
+    This button is taken from the matplotlib documentation.
+    """
+
+    # keyboard shortcut
+    default_keymap = 'm'
+    description = 'List Tools'
+
+    def trigger(self, *args, **kwargs):
+        print('_' * 80)
+        print("{0:12} {1:45} {2}".format(
+            'Name (id)', 'Tool description', 'Keymap'))
+        print('-' * 80)
+        tools = self.toolmanager.tools
+        for name in sorted(tools):
+            if not tools[name].description:
+                continue
+            keys = ', '.join(sorted(self.toolmanager.get_tool_keymap(name)))
+            print("{0:12} {1:45} {2}".format(
+                name, tools[name].description, keys))
+        print('_' * 80)
+        print("Active Toggle tools")
+        print("{0:12} {1:45}".format("Group", "Active"))
+        print('-' * 80)
+        for group, active in self.toolmanager.active_toggle.items():
+            print("{0:12} {1:45}".format(str(group), str(active)))
+
+
+class ListTools(ToolBase):
+    """
+    List all the tools controlled by the `ToolManager`.
+
+    Notes
+    -----
+    This button is taken from the matplotlib documentation.
+    """
+
+    # keyboard shortcut
+    default_keymap = 'm'
+    description = 'List Tools'
+
+    def trigger(self, *args, **kwargs):
+        print('_' * 80)
+        print("{0:12} {1:45} {2}".format(
+            'Name (id)', 'Tool description', 'Keymap'))
+        print('-' * 80)
+        tools = self.toolmanager.tools
+        for name in sorted(tools):
+            if not tools[name].description:
+                continue
+            keys = ', '.join(sorted(self.toolmanager.get_tool_keymap(name)))
+            print("{0:12} {1:45} {2}".format(
+                name, tools[name].description, keys))
+        print('_' * 80)
+        print("Active Toggle tools")
+        print("{0:12} {1:45}".format("Group", "Active"))
+        print('-' * 80)
+        for group, active in self.toolmanager.active_toggle.items():
+            print("{0:12} {1:45}".format(str(group), str(active)))
 
 
 class _PhysioEditor():
@@ -32,38 +102,29 @@ class _PhysioEditor():
         self.fig, self.ax = plt.subplots(nrows=1, ncols=1)
         self.fig.canvas.mpl_connect('scroll_event', self.on_wheel)
         self.fig.canvas.mpl_connect('key_press_event', self.on_key)
-
-        # Add radio buttons for editing purposes
-        plt.subplots_adjust(left=0.2)
-
-        ax_color = plt.axes([0.02, 0.5, 0.2, 0.3])
-        color_button = RadioButtons(ax_color, ['red', 'green', 'blue', 'black'],
-                                    [False, False, True, False], activecolor='k')
+        self.fig.canvas.manager.toolmanager.add_tool('Delete Peaks', DeletePeaks)
+        self.fig.canvas.manager.toolmanager.add_tool('Reject Peaks', DeletePeaks)
+        self.fig.canvas.manager.toolmanager.add_tool('Add Peaks', DeletePeaks)
+        self.fig.canvas.manager.toolmanager.add_tool('List', ListTools)
 
         # three selectors for:
         #    1. rejection (central mouse),
         #    2. addition (right mouse), and
         #    3. deletion (left mouse)
         delete = functools.partial(self.on_edit, method='delete')
-        reject = functools.partial(self.on_edit, method='reject')
-        insert = functools.partial(self.on_edit, method='insert')
+        # reject = functools.partial(self.on_edit, method='reject')
+        # insert = functools.partial(self.on_edit, method='insert')
         self.span2 = SpanSelector(self.ax, delete, 'horizontal',
                                   button=1, useblit=True,
                                   rectprops=dict(facecolor='red', alpha=0.3))
-        self.span1 = SpanSelector(self.ax, reject, 'horizontal',
-                                  button=2, useblit=True,
-                                  rectprops=dict(facecolor='blue', alpha=0.3))
-        self.span3 = SpanSelector(self.ax, insert, 'horizontal',
-                                  button=3, useblit=True,
-                                  rectprops=dict(facecolor='green', alpha=0.3))
+        # self.span1 = SpanSelector(self.ax, reject, 'horizontal',
+        #                           button=2, useblit=True,
+        #                           rectprops=dict(facecolor='blue', alpha=0.3))
+        # self.span3 = SpanSelector(self.ax, insert, 'horizontal',
+        #                           button=3, useblit=True,
+        #                           rectprops=dict(facecolor='green', alpha=0.3))
 
         self.plot_signals(False)
-
-        def color(labels):
-            self.set_color(labels)
-            self.fig.canvas.draw()
-
-        color_button.on_clicked(color)
 
     def plot_signals(self, plot=True):
         """Clear axes and plots data / peaks / troughs."""
