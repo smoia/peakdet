@@ -36,7 +36,7 @@ class _PhysioEditor():
         # Add radio buttons for editing purposes
         plt.subplots_adjust(left=0.2)
 
-        ax_color = plt.axes([0.02, 0.5, 0.2, 0.3])
+        ax_color = plt.axes([0.02, 0.5, 0.15, 0.3])
         color_button = RadioButtons(ax_color, ['red', 'green', 'blue', 'black'],
                                     [False, False, True, False], activecolor='k')
 
@@ -47,15 +47,15 @@ class _PhysioEditor():
         delete = functools.partial(self.on_edit, method='delete')
         reject = functools.partial(self.on_edit, method='reject')
         insert = functools.partial(self.on_edit, method='insert')
-        self.span2 = SpanSelector(self.ax, delete, 'horizontal',
-                                  button=1, useblit=True,
-                                  rectprops=dict(facecolor='red', alpha=0.3))
-        self.span1 = SpanSelector(self.ax, reject, 'horizontal',
-                                  button=2, useblit=True,
-                                  rectprops=dict(facecolor='blue', alpha=0.3))
-        self.span3 = SpanSelector(self.ax, insert, 'horizontal',
-                                  button=3, useblit=True,
-                                  rectprops=dict(facecolor='green', alpha=0.3))
+        # self.span2 = SpanSelector(self.ax, delete, 'horizontal',
+        #                           button=1, useblit=True,
+        #                           rectprops=dict(facecolor='red', alpha=0.3))
+        # self.span1 = SpanSelector(self.ax, reject, 'horizontal',
+        #                           button=2, useblit=True,
+        #                           rectprops=dict(facecolor='blue', alpha=0.3))
+        # self.span3 = SpanSelector(self.ax, insert, 'horizontal',
+        #                           button=3, useblit=True,
+        #                           rectprops=dict(facecolor='green', alpha=0.3))
 
         self.plot_signals(False)
 
