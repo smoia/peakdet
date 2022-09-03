@@ -23,6 +23,7 @@ class _PhysioEditor():
         self.data = utils.check_physio(data, copy=True)
         fs = 1 if data.fs is None else data.fs
         self.time = np.arange(0, len(data.data) / fs, 1 / fs)
+        self.time = self.time[0:len(data.data)]
         # Read if there is support data
         self.suppdata = data.suppdata
 
