@@ -162,6 +162,28 @@ def delete_peaks(data, remove):
 
 
 @utils.make_operation()
+def delete_peaks_run(data, remove):
+    """
+    Deletes peaks in `remove` from peaks stored in `data`
+
+    Parameters
+    ----------
+    data : Physio_like
+    remove : array_like
+
+    Returns
+    -------
+    data : Physio_like
+    """
+
+    data = utils.check_physio(data, ensure_fs=False, copy=True)
+    data._metadata['peaks'] = np.setdiff1d(data._metadata['peaks'], remove)
+    # data._metadata['troughs'] = utils.check_troughs(data, data.peaks)
+
+    return data
+
+
+@utils.make_operation()
 def reject_peaks(data, remove):
     """
     Marks peaks in `remove` as rejected artifacts in `data`
@@ -182,6 +204,27 @@ def reject_peaks(data, remove):
 
     return data
 
+
+@utils.make_operation()
+def reject_peaks_run(data, remove):
+    """
+    Marks peaks in `remove` as rejected artifacts in `data`
+
+    Parameters
+    ----------
+    data : Physio_like
+    remove : array_like
+
+    Returns
+    -------
+    data : Physio_like
+    """
+
+    data = utils.check_physio(data, ensure_fs=False, copy=True)
+    data._metadata['reject'] = np.append(data._metadata['reject'], remove)
+    # data._metadata['troughs'] = utils.check_troughs(data, data.peaks)
+
+    return data
 
 @utils.make_operation()
 def add_peaks(data, add):
@@ -205,6 +248,28 @@ def add_peaks(data, add):
 
     return data
 
+
+@utils.make_operation()
+def add_peaks_run(data, add):
+    """
+    Add `newpeak` to add them in `data`
+
+    Parameters
+    ----------
+    data : Physio_like
+    add : int
+
+    Returns
+    -------
+    data : Physio_like
+    """
+
+    data = utils.check_physio(data, ensure_fs=False, copy=True)
+    idx = np.searchsorted(data._metadata['peaks'], add)
+    data._metadata['peaks'] = np.insert(data._metadata['peaks'], idx, add)
+    # data._metadata['troughs'] = utils.check_troughs(data, data.peaks)
+
+    return data
 
 def edit_physio(data):
     """
@@ -238,6 +303,42 @@ def edit_physio(data):
         data = delete_peaks(data, remove=sorted(edits.deleted))
     if len(edits.included) > 0:
         data = add_peaks(data, add=sorted(edits.included))
+
+    return data
+
+
+def edit_run(data):
+    """
+    Opens interactive plot with `data` to permit manual editing of time series
+
+    Parameters
+    ----------
+    data : Physio_like
+        Physiological data to be edited
+
+    Returns
+    -------
+    edited : :class:`peakdet.Physio`
+        Input `data` with manual edits
+    """
+
+    data = utils.check_physio(data, ensure_fs=True)
+
+    # no point in manual edits if peaks/troughs aren't defined
+    if not (len(data.peaks) and len(data.troughs)):
+        return
+
+    # perform manual editing
+    edits = editor._PhysioEditor(data)
+    plt.show(block=True)
+
+    # replay editing on original provided data object
+    if len(edits.rejected) > 0:
+        data = reject_peaks_run(data, remove=sorted(edits.rejected))
+    if len(edits.deleted) > 0:
+        data = delete_peaks_run(data, remove=sorted(edits.deleted))
+    if len(edits.included) > 0:
+        data = add_peaks_run(data, add=sorted(edits.included))
 
     return data
 
